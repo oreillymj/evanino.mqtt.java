@@ -71,6 +71,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends mosquitto
           sudo systemctl stop mosquitto || true
+          # Shows whether AppArmor confines mosquitto, which would stop it reading the tests' config.
+          mosquitto -h | head -1 || true
+          ls /etc/apparmor.d | grep -i mosq || echo "no mosquitto AppArmor profile file"
+          sudo aa-status 2>/dev/null | grep -i mosq || echo "no mosquitto AppArmor profile loaded"
 
       # v1.2.3 -> 1.2.3. Written into pom.xml for this build only (not committed).
       - name: Set the version from the tag
@@ -104,12 +108,19 @@ jobs:
           cp "target/${NAME}.jar" "dist/${NAME}-${VERSION}-nologging.jar"
           ls -l dist
 
+      # Kernel messages name the file and the rule if AppArmor denied mosquitto access.
+      - name: Show AppArmor denials
+        if: failure() && env.RUN_TESTS == 'true'
+        run: sudo dmesg | grep -i -E "apparmor.*mosquitto|mosquitto.*apparmor" | tail -20 || true
+
       - name: Upload test reports
         if: failure() && env.RUN_TESTS == 'true'
         uses: actions/upload-artifact@v7.0.2
         with:
           name: test-reports
-          path: target/surefire-reports/
+          path: |
+            target/surefire-reports/
+            target/mosquitto/
 
       - uses: actions/upload-artifact@v7.0.2
         with:

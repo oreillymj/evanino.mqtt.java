@@ -146,7 +146,7 @@ public final class MosquittoBroker extends ExternalResource {
 		webSocketPort = freePort();
 		sslPort = freePort();
 		secureWebSocketPort = freePort();
-		configFile = File.createTempFile("mosquitto-test-", ".conf");
+		configFile = File.createTempFile("mosquitto-test-", ".conf", configDirectory());
 		configFile.deleteOnExit();
 		String config = "listener " + port + " 127.0.0.1\n"
 				+ "allow_anonymous true\n"
@@ -292,6 +292,22 @@ public final class MosquittoBroker extends ExternalResource {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Returns the directory for mosquitto's config and log: {@code target/mosquitto} in a Maven
+	 * build, next to the test certificates, or {@code null} for the system temporary directory.
+	 * On GitHub's Ubuntu runners mosquitto could not open a config file in {@code /tmp}.
+	 *
+	 * @return the directory, or {@code null}
+	 */
+	private static File configDirectory() {
+		File target = new File("target");
+		if (!target.isDirectory()) {
+			return null;
+		}
+		File dir = new File(target, "mosquitto");
+		return dir.isDirectory() || dir.mkdirs() ? dir : null;
 	}
 
 	/**
