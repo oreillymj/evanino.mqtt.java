@@ -824,6 +824,9 @@ Install mosquitto:
 
 - **Windows:** the installer from <https://mosquitto.org/download/>.
 - **Debian / Ubuntu:** `sudo apt install mosquitto` (you can stop the system service; the tests start their own).
+  If an AppArmor profile confines `/usr/sbin/mosquitto`, as on GitHub's Ubuntu runners, mosquitto exits with
+  "Unable to open config file". Copy the binary elsewhere and point the tests at the copy:
+  `cp /usr/sbin/mosquitto /tmp/mosquitto && mvn test -Dmosquitto.path=/tmp/mosquitto`.
 - **macOS:** `brew install mosquitto`.
 
 System properties:

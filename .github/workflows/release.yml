@@ -71,10 +71,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends mosquitto
           sudo systemctl stop mosquitto || true
-          # Shows whether AppArmor confines mosquitto, which would stop it reading the tests' config.
-          mosquitto -h | head -1 || true
-          ls /etc/apparmor.d | grep -i mosq || echo "no mosquitto AppArmor profile file"
-          sudo aa-status 2>/dev/null | grep -i mosq || echo "no mosquitto AppArmor profile loaded"
+          # The runner's AppArmor profile for /usr/sbin/mosquitto only lets it read its own
+          # files, so it cannot open the tests' config or certificates. The profile is matched
+          # by path, so the tests run a copy of the binary from outside /usr/sbin.
+          mkdir -p "$RUNNER_TEMP/mosquitto"
+          cp /usr/sbin/mosquitto "$RUNNER_TEMP/mosquitto/mosquitto"
+          echo "MOSQUITTO_ARG=-Dmosquitto.path=$RUNNER_TEMP/mosquitto/mosquitto" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/mosquitto/mosquitto" -h | head -1 || true
 
       # v1.2.3 -> 1.2.3. Written into pom.xml for this build only (not committed).
       - name: Set the version from the tag
@@ -92,7 +95,7 @@ jobs:
           set -eu
           TESTS=""
           [ "$RUN_TESTS" = "true" ] || TESTS="-DskipTests"
-          mvn -B -Dmaven.antrun.skip=true -Dgpg.skip=true $TESTS clean package \
+          mvn -B -Dmaven.antrun.skip=true -Dgpg.skip=true $TESTS ${MOSQUITTO_ARG:-} clean package \
             org.apache.maven.plugins:maven-javadoc-plugin:3.11.2:jar -Ddoclint=none
           mkdir -p dist
           cp "target/${NAME}.jar"         "dist/${NAME}-${VERSION}.jar"
