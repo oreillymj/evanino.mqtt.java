@@ -1,0 +1,10 @@
+# The Ant build step rewrites BUILD_NUMBER in MqttAsyncClient.java on every build. The
+# "buildnumber" clean filter replaces it with "0" whenever git reads the file, so the bump never
+# shows up in git status or diffs. The filter must be configured once per clone:
+#
+#   git config filter.buildnumber.clean "sed -E 's/(BUILD_NUMBER = \")[0-9]+(\";)/\10\2/'"
+#   git config filter.buildnumber.smudge cat
+src/main/java/io/github/oreillymj/evanino/mqtt/MqttAsyncClient.java filter=buildnumber
+
+# Shell scripts must keep LF line endings to run on Linux
+*.sh text eol=lf

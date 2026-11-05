@@ -1,0 +1,50 @@
+<project name="evanino-mqtt-java" default="current-number" basedir=".">
+
+    <description>
+        Increment various build variables
+    </description>
+    <!-- set global properties for this build -->
+    <property name="src" location="../nett/src"/>
+
+    <property file="build_info.properties"/>
+    <property name="build.number" value="${build.major.number}.${build.minor.number}.${build.revision.number}"/>
+    <property name="main" value="/io/github/oreillymj/evanino/mqtt/MqttAsyncClient.java"/>
+
+    <target name="current-number">
+        <echo>Current build number:${build.number}</echo>
+        <echo>Major build number:${build.major.number}</echo>
+        <echo>Minor build number:${build.minor.number}</echo>
+        <echo>Revision build number:${build.revision.number}</echo>
+    </target>
+    <target name="compile">
+        <property file="build_info.properties"/>
+
+        <replaceregexp
+                file="${src}${main}"
+                match="private\s+static\s+final\s+String\s+BUILD_NUMBER\s+=\s+&quot;.*&quot;;"
+                replace="private static final String BUILD_NUMBER = &quot;${build.revision.number}&quot;;"
+                byline="true"/>
+
+        <replaceregexp
+                file="${src}${main}"
+                match="private\s+static\s+final\s+String\s+MINOR_VERSION\s+=\s+&quot;.*&quot;;"
+                replace="private static final String MINOR_VERSION = &quot;${build.minor.number}&quot;;"
+                byline="true"/>
+
+        <replaceregexp
+                file="${src}${main}"
+                match="private\s+static\s+final\s+String\s+MAJOR_VERSION\s+=\s+&quot;.*&quot;;"
+                replace="private static final String MAJOR_VERSION = &quot;${build.major.number}&quot;;"
+                byline="true"/>
+    </target>
+    <target name="increment">
+        <propertyfile file="build_info.properties">
+            <entry key="build.revision.number"
+                   type="int"
+                   operation="+"
+                   value="1"
+                   pattern="00"/>
+        </propertyfile>
+    </target>
+
+</project>

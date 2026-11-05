@@ -1,0 +1,83 @@
+<!--
+https://stackoverflow.com/questions/1431315/build-numbers-major-minor-revision
+-->
+
+<project name="evanino-mqtt-java" default="current-number" basedir="..">
+
+    <description>
+        Increment various build variables
+    </description>
+    <!-- set global properties for this build -->
+    <property name="src" location="${basedir}/src"/>
+
+    <property file="${basedir}/ant/build_info.properties"/>
+    <property name="build.number" value="${build.major.number}.${build.minor.number}.${build.revision.number}"/>
+    <property name="main" value="/main/java/io/github/oreillymj/evanino/mqtt/MqttAsyncClient.java"/>
+
+
+    <target name="current-number">
+        <echo>Current build number:${build.number}</echo>
+        <echo>Major build number:${build.major.number}</echo>
+        <echo>Minor build number:${build.minor.number}</echo>
+        <echo>Revision build number:${build.revision.number}</echo>
+    </target>
+
+    <target name="compile">
+        <antcall target="revision"/>
+    </target>
+
+    <target name="dist">
+        <antcall target="minor"/>
+    </target>
+
+    <target name="revision">
+        <propertyfile file="${basedir}/ant/build_info.properties">
+            <entry key="build.revision.number" type="int" operation="+" value="1" pattern="00"/>
+        </propertyfile>
+        <!-- "/main/java/io/github/oreillymj/evanino/mqtt/MqttAsyncClient.java" -->
+        <!--<replaceregexp file="${src}${main}"-->
+        <replaceregexp file="${src}${main}"
+                       match="private\s+static\s+final\s+String\s+BUILD_NUMBER\s+=\s+&quot;.*&quot;;"
+                       replace="private static final String BUILD_NUMBER = &quot;${build.revision.number}&quot;;"
+                       byline="true"
+                       encoding="UTF-8"
+        />
+    </target>
+
+    <target name="minor">
+        <propertyfile file="${basedir}/ant/build_info.properties">
+            <entry key="build.minor.number" type="int" operation="+" value="1" pattern="00"/>
+            <!--<entry key="build.revision.number" type="int" value="0" pattern="00"/>-->
+
+        </propertyfile>
+        <replaceregexp file="${src}${main}"
+                       match="private\s+static\s+final\s+String\s+MINOR_VERSION\s+=\s+&quot;.*&quot;;"
+                       replace="private static final String MINOR_VERSION = &quot;${build.minor.number}&quot;;"
+                       byline="true"
+                       encoding="UTF-8"
+        />
+    </target>
+
+    <target name="major">
+        <propertyfile file="${basedir}/ant/build_info.properties">
+            <entry key="build.major.number" type="int" operation="+" value="1" pattern="00"/>
+            <entry key="build.minor.number" type="int" value="0" pattern="00"/>
+            <entry key="build.revision.number" type="int" value="0" pattern="00"/>
+        </propertyfile>
+        <replaceregexp file="${src}${main}"
+                       match="private\s+static\s+final\s+String\s+MAJOR_VERSION\s+=\s+&quot;.*&quot;;"
+                       replace="private static final String MAJOR_VERSION = &quot;${build.major.number}&quot;;"
+                       byline="true"
+                       encoding="UTF-8"
+        />
+    </target>
+
+    <target name="all">
+        <propertyfile file="${basedir}/ant/build_info.properties">
+            <entry key="build.major.number" type="int" operation="+" value="1" pattern="00"/>
+            <entry key="build.minor.number" type="int" operation="+" value="1" pattern="00"/>
+            <entry key="build.revision.number" type="int" operation="+" value="1" pattern="00"/>
+        </propertyfile>
+    </target>
+
+</project>

@@ -1,0 +1,20 @@
+target/
+scratch/*
+*.class
+*.jar
+ant/build_info.properties
+!lib/*.jar
+
+
+# IntelliJ
+.idea/
+*.iml
+out/
+# Benchmark harness build output
+benchmark/build/
+benchmark/results/
+# Personal notes
+/NOTES.md
+/CLAUDE.md
+# Paho issue scratch test build output
+paho-issues/build/

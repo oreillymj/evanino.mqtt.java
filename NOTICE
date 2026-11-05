@@ -1,0 +1,65 @@
+Evanino MQTT
+Copyright 2026 Michael OReilly
+
+Licensed under the Apache License, Version 2.0 (see LICENSE), except where a file
+says otherwise.
+
+This product includes software from other projects:
+
+-------------------------------------------------------------------------------
+Eclipse Paho Java client
+https://eclipse.dev/paho/
+https://github.com/eclipse-paho/paho.mqtt.java
+
+Copyright IBM Corp., Red Hat Inc., Eurotech and/or its affiliates, and the other
+Eclipse Paho contributors.
+
+Paho is made available under the Eclipse Public License v2.0 and the Eclipse
+Distribution License v1.0. This product uses it under the Eclipse Distribution
+License v1.0, included in licenses/EDL-1.0.txt. Each file below keeps its original
+notice.
+
+From the Paho client (org.eclipse.paho.client.mqttv3), with changes:
+  src/main/java/io/github/oreillymj/evanino/mqtt/
+    ExceptionHelper.java, MessageCatalog.java, MqttException.java,
+    MqttMessage.java, MqttSecurityException.java, MqttTopic.java
+    IMqttActionListener.java (the interface and most of its documentation)
+    MqttAsyncClient.java (the client ID length check in its constructor)
+
+Ported from the Paho client tests (org.eclipse.paho.client.mqttv3.test):
+  src/test/java/io/github/oreillymj/evanino/mqtt/
+    AutomaticReconnectTest.java, BasicSSLTest.java, BasicTest.java,
+    Bug443142Test.java, ConnectionLossTest.java,
+    ConnectionManipulationProxyServer.java, Issue370Test.java,
+    LiveTakeOverTest.java, MqttConnectOptionsTest.java, MqttDataTypesTest.java,
+    MqttPersistentDataTest.java, MqttTopicTest.java, MqttV3Receiver.java,
+    NetworkModuleServiceTest.java, OfflineBufferingTest.java,
+    PerSubscriptionMessageHandlerTest.java, SSLSessionResumptionTest.java,
+    SendReceiveAsyncCallbackTest.java, SendReceiveAsyncTest.java,
+    SendReceiveTest.java, TLSHostnameVerificationTest.java, WebSocketTest.java
+  src/test/resources/i_can_eat_glass.txt
+
+The public API (class, method and constant names) is modelled on Paho's, so that
+code written for Paho can be ported. This product is not part of, or endorsed by,
+the Eclipse Foundation or the Paho project.
+
+-------------------------------------------------------------------------------
+netty-mqtt-client by JetLinks
+https://github.com/jetlinks/netty-mqtt-client
+
+This product started as a fork of netty-mqtt-client by zhouhao (JetLinks),
+published under the Apache License, Version 2.0, which is based on netty-mqtt by
+Jeffrey Kog (https://github.com/jeffreykog/netty-mqtt). These classes come from
+that code, much changed since:
+  src/main/java/io/github/oreillymj/evanino/mqtt/
+    ChannelClosedException.java, MqttAsyncClient.java, MqttChannelHandler.java,
+    MqttConnectOptions.java, MqttConnectResult.java, MqttIncomingQos2Publish.java,
+    MqttLastWill.java, MqttPendingPublish.java, MqttPendingSubscription.java,
+    MqttPendingUnsubscription.java, MqttPingHandler.java, MqttSubscription.java,
+    RetransmissionHandler.java
+  scratch/ (unused, outside the build)
+    MqttConectionMessage.java, MqttWatchDogHandler.java
+
+netty-mqtt does not state a licence. Its author has been asked to add an Apache
+License 2.0 LICENSE file to that repository:
+https://github.com/jeffreykog/netty-mqtt/issues/2

@@ -1,0 +1,146 @@
+name: Release
+
+# Builds the library with Maven and attaches the JARs to a GitHub release.
+#
+# It starts when
+#   - a release is published (GitHub web UI, `gh release create`, API) - pre-releases too, or
+#   - a tag v* is pushed (`git tag v1.2.3 && git push origin v1.2.3`).
+# Publishing a release from the UI creates its tag as well, so both events can arrive at once;
+# the concurrency group keeps only the latest of them running.
+#
+# A draft release does not start it (nothing is published until you click "Publish release").
+# The workflow file must exist in the commit the tag points to.
+#
+# The version comes from the tag: v1.2.3 builds 1.2.3, whatever pom.xml says.
+#
+# Files attached to the release (for tag v1.2.3):
+#   evanino-mqtt-java-1.2.3.jar             the library
+#   evanino-mqtt-java-1.2.3-nologging.jar   the library built with -Pno-logging (debug log calls removed)
+#   evanino-mqtt-java-1.2.3-sources.jar     sources, for IDEs
+#   evanino-mqtt-java-1.2.3-javadoc.jar     API documentation
+#   evanino-mqtt-java-1.2.3.pom             the POM, listing the dependencies (Netty, Guava)
+#   evanino-mqtt-java-1.2.3-src.tar.gz      the whole repository at the tag
+#   SHA256SUMS.txt                    checksums of all of the above
+
+# Check for the latest version of actions.
+# https://github.com/orgs/actions/repositories?type=all
+# https://github.com/actions/checkout/releases
+# https://github.com/actions/setup-java/releases
+# https://github.com/actions/download-artifact/releases
+# https://github.com/actions/upload-artifact
+
+# https://github.com/softprops/action-gh-release/releases/tag/v3.0.3
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  NAME: evanino-mqtt-java     # the Maven artifactId, used for the file names
+  # Set to "false" to release without running the tests (they take about 15 minutes).
+  RUN_TESTS: "true"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # The library targets Java 8, so it is built and tested with a Java 8 JDK.
+      # cache: maven keeps ~/.m2/repository between runs.
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: "8"
+          cache: maven
+
+      # The integration tests start their own private mosquitto (see MosquittoBroker);
+      # the system service the package starts is not used.
+      - name: Install mosquitto
+        if: env.RUN_TESTS == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mosquitto
+          sudo systemctl stop mosquitto || true
+
+      # v1.2.3 -> 1.2.3. Written into pom.xml for this build only (not committed).
+      - name: Set the version from the tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          mvn -B -q versions:set -DnewVersion="${VERSION}" -DgenerateBackupPoms=false
+          echo "Building version ${VERSION}"
+
+      # -Dmaven.antrun.skip=true: the Ant step only bumps a local build counter
+      # (ant/build_info.properties is not in git), so it is skipped here.
+      # -Dgpg.skip=true: nothing is signed in this build.
+      - name: Build, test and package
+        run: |
+          set -eu
+          TESTS=""
+          [ "$RUN_TESTS" = "true" ] || TESTS="-DskipTests"
+          mvn -B -Dmaven.antrun.skip=true -Dgpg.skip=true $TESTS clean package \
+            org.apache.maven.plugins:maven-javadoc-plugin:3.11.2:jar -Ddoclint=none
+          mkdir -p dist
+          cp "target/${NAME}.jar"         "dist/${NAME}-${VERSION}.jar"
+          cp "target/${NAME}-sources.jar" "dist/${NAME}-${VERSION}-sources.jar"
+          cp "target/${NAME}-javadoc.jar" "dist/${NAME}-${VERSION}-javadoc.jar"
+          cp pom.xml                      "dist/${NAME}-${VERSION}.pom"
+
+      # The same library without its debug log calls (BuildConfig.LOGGING = false).
+      - name: Package without logging
+        run: |
+          set -eu
+          mvn -B -Dmaven.antrun.skip=true -Dgpg.skip=true -DskipTests -Pno-logging clean package
+          cp "target/${NAME}.jar" "dist/${NAME}-${VERSION}-nologging.jar"
+          ls -l dist
+
+      - name: Upload test reports
+        if: failure() && env.RUN_TESTS == 'true'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: test-reports
+          path: target/surefire-reports/
+
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: jars
+          path: dist/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to create or update the release
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          name: jars
+          path: dist
+
+      - name: Create source archive and checksums
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          git archive --format=tar.gz \
+            --prefix=${NAME}-${VERSION}/ \
+            -o dist/${NAME}-${VERSION}-src.tar.gz HEAD
+          (cd dist && sha256sum * > SHA256SUMS.txt)
+
+      - uses: softprops/action-gh-release@v3.0.3
+        with:
+          files: dist/*
+          generate_release_notes: true
+          # keep a release made as a pre-release in the UI a pre-release; for a bare tag,
+          # a name with a hyphen (v1.2.0-rc1) is treated as one
+          prerelease: ${{ github.event.release.prerelease || contains(github.ref_name, '-') }}

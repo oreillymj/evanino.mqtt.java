@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Builds and runs the examples. It is a separate project, not a module of the library, so the
+  library itself does not depend on BouncyCastle. It uses the library from the local Maven
+  repository, so install that first (from the project root):
+
+    mvn clean install -Dgpg.skip=true -DskipTests
+
+  Then, in this directory:
+
+    mvn package
+    mvn exec:java -Dexec.mainClass=org.example.SslExample -Dexec.args="ssl://localhost:8883 ssl/ca.crt"
+
+  or run the jar built in target/, which has every dependency in target/lib:
+
+    java -jar target/evanino-mqtt-java-examples.jar ssl://localhost:8883 ssl/ca.crt
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.oreillymj</groupId>
+    <artifactId>evanino-mqtt-java-examples</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>Evanino MQTT examples</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <!-- The library version to build against: the one installed by the library build -->
+        <evanino-mqtt.version>1.0.0-SNAPSHOT</evanino-mqtt.version>
+        <bouncycastle.version>1.82</bouncycastle.version>
+        <exec.mainClass>org.example.SslExample</exec.mainClass>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.github.oreillymj</groupId>
+            <artifactId>evanino-mqtt-java</artifactId>
+            <version>${evanino-mqtt.version}</version>
+        </dependency>
+        <!-- PEM keys and certificates for SslUtil; brings in bcprov and bcutil -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <!-- The examples keep their own directories (ssl/ ...), so each can be read on its own -->
+        <sourceDirectory>ssl</sourceDirectory>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+
+            <!-- Copies the dependencies to target/lib for the runnable jar -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.8.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>${exec.mainClass}</mainClass>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>lib/</classpathPrefix>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <!-- mvn exec:java runs an example with the project's classpath -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>
