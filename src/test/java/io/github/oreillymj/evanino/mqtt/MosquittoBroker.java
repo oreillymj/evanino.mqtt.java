@@ -26,6 +26,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -215,14 +216,15 @@ public final class MosquittoBroker extends ExternalResource {
 	private void start(File exe) throws Exception {
 		ProcessBuilder pb = new ProcessBuilder(exe.getAbsolutePath(), "-c", configFile.getAbsolutePath());
 		pb.redirectErrorStream(true);
-		pb.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(configFile.getAbsolutePath() + ".log")));
+		File log = new File(configFile.getAbsolutePath() + ".log");
+		pb.redirectOutput(ProcessBuilder.Redirect.appendTo(log));
 		process = pb.start();
 
 		long deadline = System.currentTimeMillis() + 10_000;
 		while (System.currentTimeMillis() < deadline) {
 			if (!process.isAlive()) {
 				throw new IllegalStateException("mosquitto exited with code " + process.exitValue()
-						+ "; see " + configFile.getAbsolutePath() + ".log");
+						+ "; see " + log.getAbsolutePath() + describe(log));
 			}
 			try (Socket s = new Socket()) {
 				s.connect(new InetSocketAddress("127.0.0.1", port), 200);
@@ -231,7 +233,34 @@ public final class MosquittoBroker extends ExternalResource {
 				Thread.sleep(50);
 			}
 		}
-		throw new IllegalStateException("mosquitto did not start listening on port " + port);
+		throw new IllegalStateException("mosquitto did not start listening on port " + port + describe(log));
+	}
+
+	/**
+	 * Returns the config file and the last lines of mosquitto's log, for an error message, so
+	 * the reason mosquitto failed shows where the log file itself is not kept, such as in CI.
+	 *
+	 * @param log mosquitto's log file
+	 * @return the text, starting with a line break
+	 */
+	private String describe(File log) {
+		StringBuilder text = new StringBuilder();
+		try {
+			text.append("\n--- ").append(configFile.getName()).append(" ---\n")
+					.append(new String(Files.readAllBytes(configFile.toPath()), StandardCharsets.UTF_8));
+		} catch (IOException e) {
+			text.append("\n(config file not readable: ").append(e).append(')');
+		}
+		try {
+			List<String> lines = Files.readAllLines(log.toPath(), StandardCharsets.UTF_8);
+			text.append("--- ").append(log.getName()).append(" ---");
+			for (String line : lines.subList(Math.max(0, lines.size() - 30), lines.size())) {
+				text.append('\n').append(line);
+			}
+		} catch (IOException e) {
+			text.append("\n(log not readable: ").append(e).append(')');
+		}
+		return text.toString();
 	}
 
 	/**
