@@ -4410,6 +4410,11 @@ public final class MqttAsyncClient implements IMqttAsyncClient {
 		 */
 		@Override
 		protected void initChannel(SocketChannel ch) throws Exception {
+			// Set the channel here, on the event loop and before CONNECT can be sent. The connect
+			// listener also sets it, but when the TCP connect completes at once (loopback on
+			// Linux) Netty runs that listener later as a task, and CONNACK can complete the
+			// connect token first, leaving channel null and isConnected() false.
+			client.channel = ch;
 			if ((!proxyAdded) && (proxyHandler != null)) {
 				if (BuildConfig.LOGGING && enableLogging) log(TAG + "MqttChannelInitializer()->initChannel() added proxyhandler");
 				ch.pipeline().addFirst("proxy", proxyHandler);
