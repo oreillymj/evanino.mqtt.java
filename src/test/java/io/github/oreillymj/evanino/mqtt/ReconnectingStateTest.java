@@ -178,8 +178,10 @@ public class ReconnectingStateTest {
 						in.readUnsignedByte();
 						int length = in.readUnsignedByte();   // a short CONNECT: one length byte
 						in.readFully(new byte[length]);
-						s.getOutputStream().write(new byte[]{0x20, 0x02, 0x00, 0x00});
+						// Before the CONNACK: once it is sent, the client can connect and the
+						// test can call dropAccepted() before this thread runs again.
 						accepted = s;
+						s.getOutputStream().write(new byte[]{0x20, 0x02, 0x00, 0x00});
 					} else {
 						refused.incrementAndGet();
 						s.close();

@@ -3758,13 +3758,17 @@ public final class MqttAsyncClient implements IMqttAsyncClient {
 	}
 
 	/**
-	 * Notifies the callback, on the calling thread, that the connection was lost.
+	 * Notifies the callback, on the callback executor, that the connection was lost. Messages
+	 * that arrived before the loss are queued there too, so they are delivered first; called
+	 * on the event loop, the callback could otherwise hear of the loss before them.
 	 *
 	 * @param cause the reason the connection was lost
 	 */
 	protected void connectionLost(Throwable cause) {
-		if (callback != null) {
-			MqttCallbackEvents.connectionLost(callback, cause, getServerURI(), classuuid);
+		MqttCallback cb = this.callback;   // snapshot: close() clears it
+		if (cb != null) {
+			String serverURI = getServerURI();
+			runCallback(() -> MqttCallbackEvents.connectionLost(cb, cause, serverURI, classuuid));
 		}
 	}
 

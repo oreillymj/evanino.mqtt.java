@@ -219,10 +219,11 @@ public final class MosquittoBroker extends ExternalResource {
 	}
 
 	/**
-	 * Launches mosquitto with this rule's config file and waits until it accepts connections.
+	 * Launches mosquitto with this rule's config file and waits until each of its listeners
+	 * accepts connections.
 	 *
 	 * @param exe the mosquitto executable
-	 * @throws Exception if the broker does not start listening within 10 seconds
+	 * @throws Exception if the broker does not open all its listeners within 10 seconds
 	 */
 	private void start(File exe) throws Exception {
 		ProcessBuilder pb = new ProcessBuilder(exe.getAbsolutePath(), "-c", configFile.getAbsolutePath());
@@ -234,20 +235,39 @@ public final class MosquittoBroker extends ExternalResource {
 		shutdownHook = new Thread(process::destroyForcibly, "mosquitto-test-shutdown");
 		Runtime.getRuntime().addShutdownHook(shutdownHook);
 
+		// Wait for every listener, not only the first: mosquitto opens the TLS ones last, after
+		// loading the certificates, and on a busy machine a TLS test could otherwise start first.
+		int[] ports = sslServerURI != null
+				? new int[]{port, webSocketPort, sslPort, secureWebSocketPort}
+				: new int[]{port, webSocketPort};
 		long deadline = System.currentTimeMillis() + 10_000;
-		while (System.currentTimeMillis() < deadline) {
-			if (!process.isAlive()) {
-				throw new IllegalStateException("mosquitto exited with code " + process.exitValue()
-						+ "; see " + log.getAbsolutePath() + describe(log));
-			}
-			try (Socket s = new Socket()) {
-				s.connect(new InetSocketAddress("127.0.0.1", port), 200);
-				return;
-			} catch (IOException notYet) {
+		for (int listener : ports) {
+			while (!accepts(listener)) {
+				if (!process.isAlive()) {
+					throw new IllegalStateException("mosquitto exited with code " + process.exitValue()
+							+ "; see " + log.getAbsolutePath() + describe(log));
+				}
+				if (System.currentTimeMillis() > deadline) {
+					throw new IllegalStateException("mosquitto did not start listening on port " + listener + describe(log));
+				}
 				Thread.sleep(50);
 			}
 		}
-		throw new IllegalStateException("mosquitto did not start listening on port " + port + describe(log));
+	}
+
+	/**
+	 * Returns whether a local port accepts a TCP connection.
+	 *
+	 * @param listener the port
+	 * @return {@code true} if the connection was accepted
+	 */
+	private static boolean accepts(int listener) {
+		try (Socket s = new Socket()) {
+			s.connect(new InetSocketAddress("127.0.0.1", listener), 200);
+			return true;
+		} catch (IOException notYet) {
+			return false;
+		}
 	}
 
 	/**
