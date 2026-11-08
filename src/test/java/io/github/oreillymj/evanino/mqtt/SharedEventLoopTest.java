@@ -17,7 +17,7 @@ package io.github.oreillymj.evanino.mqtt;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoop;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.MultithreadEventLoopGroup;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.ClassRule;
@@ -82,7 +82,7 @@ public class SharedEventLoopTest {
 			MqttAsyncClient first = newClient();
 			clients.add(first);
 			shared = first.getEventLoop();
-			loops = ((NioEventLoopGroup) shared).executorCount();
+			loops = ((MultithreadEventLoopGroup) shared).executorCount();
 			for (int i = 1; i < loops + 8; i++) {
 				clients.add(newClient());
 			}
@@ -193,8 +193,9 @@ public class SharedEventLoopTest {
 	 * @throws Exception if the test fails unexpectedly
 	 */
 	@Test(timeout = 20_000)
+	@SuppressWarnings("deprecation") // NioEventLoopGroup, which also runs on Netty 4.1
 	public void testCallerGroupIsUsedAndNotShutDown() throws Exception {
-		EventLoopGroup own = new NioEventLoopGroup(1);
+		EventLoopGroup own = new io.netty.channel.nio.NioEventLoopGroup(1);
 		try {
 			int before = SharedEventLoop.referenceCount();
 			MqttAsyncClient a = newClient();

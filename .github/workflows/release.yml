@@ -44,8 +44,12 @@ concurrency:
 
 env:
   NAME: evanino-mqtt-java     # the Maven artifactId, used for the file names
-  # Set to "false" to release without running the tests (they take about 15 minutes).
+  # Set to "false" to release without running the tests (they take about 15 minutes for each
+  # Netty version).
   RUN_TESTS: "true"
+  # The client is built against the Netty version in pom.xml (4.2) but also supports Netty 4.1;
+  # the tests run against this version too.
+  NETTY_41_VERSION: 4.1.137.Final
 
 jobs:
   build:
@@ -102,6 +106,16 @@ jobs:
           cp "target/${NAME}-sources.jar" "dist/${NAME}-${VERSION}-sources.jar"
           cp "target/${NAME}-javadoc.jar" "dist/${NAME}-${VERSION}-javadoc.jar"
           cp pom.xml                      "dist/${NAME}-${VERSION}.pom"
+
+      # Users can stay on Netty 4.1 with the same JAR, so the classes just built against Netty 4.2
+      # are tested again with Netty 4.1 on the classpath (surefire:test does not recompile), and
+      # the source is compiled against Netty 4.1 to catch a 4.2-only API the tests do not reach.
+      - name: Test and compile against Netty 4.1
+        if: env.RUN_TESTS == 'true'
+        run: |
+          set -eu
+          mvn -B -Dmaven.antrun.skip=true -Dgpg.skip=true -Dnetty.version="$NETTY_41_VERSION" ${MOSQUITTO_ARG:-} surefire:test
+          mvn -B -q -Dmaven.antrun.skip=true -Dgpg.skip=true -Dnetty.version="$NETTY_41_VERSION" clean test-compile
 
       # The same library without its debug log calls (BuildConfig.LOGGING = false).
       - name: Package without logging

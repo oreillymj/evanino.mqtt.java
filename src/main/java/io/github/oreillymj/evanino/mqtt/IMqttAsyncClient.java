@@ -17,7 +17,6 @@ package io.github.oreillymj.evanino.mqtt;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.handler.codec.mqtt.MqttQoS;
 
 /**
@@ -213,8 +212,9 @@ public interface IMqttAsyncClient {
 
 	/**
 	 * Sets the Netty {@link EventLoopGroup} the client connects on. By default all clients share
-	 * one {@link NioEventLoopGroup}. If you change the EventLoopGroup to another type, make sure
-	 * to change the {@link Channel} class using {@link MqttConnectOptions#setChannelClass(Class)}.
+	 * one NIO event loop group. If you give the client a group of another type, such as epoll,
+	 * make sure to change the {@link Channel} class using
+	 * {@link MqttConnectOptions#setChannelClass(Class)}.
 	 * Call this before connecting. The group stays the caller's: shutting the client down does
 	 * not shut it down.
 	 *

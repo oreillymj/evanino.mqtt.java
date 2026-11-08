@@ -14,7 +14,7 @@
 
 package io.github.oreillymj.evanino.mqtt;
 
-import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.MultithreadEventLoopGroup;
 import io.netty.handler.flush.FlushConsolidationHandler;
 import io.netty.util.NettyRuntime;
 import org.junit.Assert;
@@ -96,7 +96,7 @@ public class OptionalTuningTest {
 			MqttAsyncClient client = new MqttAsyncClient(TestClients.options(broker.getServerURI(), "OptionalTuningTest-sized"));
 			try {
 				Assert.assertEquals(NettyRuntime.availableProcessors(),
-						((NioEventLoopGroup) client.getEventLoop()).executorCount());
+						((MultithreadEventLoopGroup) client.getEventLoop()).executorCount());
 			} finally {
 				TestClients.shutdownQuietly(client);
 			}

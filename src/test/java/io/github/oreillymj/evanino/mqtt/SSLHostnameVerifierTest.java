@@ -21,7 +21,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.ssl.SslContext;
@@ -201,7 +200,8 @@ public class SSLHostnameVerifierTest {
 	 * @throws Exception if the test fails unexpectedly
 	 */
 	@Test(timeout = 20_000)
-	public void testNothingSentAfterRejection() throws Exception {
+	@SuppressWarnings("deprecation") // NioEventLoopGroup, which also runs on Netty 4.1
+	public void testNothingSentAfterRejection()throws Exception {
 		File cert = TestTls.file("server.crt");
 		File key = TestTls.file("server.key");
 		Assume.assumeTrue("test TLS certificates not on the classpath", cert != null && key != null);
@@ -209,7 +209,7 @@ public class SSLHostnameVerifierTest {
 
 		AtomicInteger received = new AtomicInteger();
 		CountDownLatch handshakes = new CountDownLatch(2);
-		EventLoopGroup group = new NioEventLoopGroup(1);
+		EventLoopGroup group = new io.netty.channel.nio.NioEventLoopGroup(1);
 		try {
 			Channel server = new ServerBootstrap()
 					.group(group)

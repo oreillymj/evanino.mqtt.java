@@ -47,7 +47,8 @@ and connects over plain TCP, TLS, WebSockets, secure WebSockets, and through SOC
 
 - Java 8 or later.
 - Maven 3.6 or later to build (IntelliJ IDEA includes it); see [What you need](#what-you-need).
-- Runtime dependencies: `io.netty:netty-all` 4.1.x and `com.google.guava:guava`.
+- Runtime dependencies: `io.netty:netty-all` 4.2.x or 4.1.x (see [Netty versions](#netty-versions)) and
+  `com.google.guava:guava`.
 - To run the integration tests: a [mosquitto](https://mosquitto.org/) broker installed locally
   (see [Testing](#testing)).
 
@@ -65,6 +66,25 @@ Build and install the library into your local Maven repository (see [Building](#
 ```
 
 All public classes are in the package `io.github.oreillymj.evanino.mqtt`.
+
+### Netty versions
+
+The client is built against Netty 4.2, and its POM asks for `netty-all` 4.2.20.Final. The same JAR also runs on
+Netty 4.1: the release workflow runs the tests against Netty 4.1.137 as well, and checks that the source still compiles
+against it. To stay on Netty 4.1, choose the version in your own project; Maven takes your declaration over the one in
+this client's POM:
+
+```xml
+<dependency>
+    <groupId>io.netty</groupId>
+    <artifactId>netty-all</artifactId>
+    <version>4.1.137.Final</version>
+</dependency>
+```
+
+If you use separate Netty modules rather than `netty-all`, import `io.netty:netty-bom` 4.1.x in
+`<dependencyManagement>` instead, so that no 4.2 module is mixed in. To build and test this client against Netty
+4.1, add `-Dnetty.version=4.1.137.Final` to the `mvn` command.
 
 ## Quick start
 
@@ -788,7 +808,7 @@ mvn install:install-file -Dfile=evanino-mqtt-java-1.2.3.jar -DpomFile=evanino-mq
 ```
 
 and use version `1.2.3` in the dependency shown in [Installation](#installation). Without Maven, put the JAR on the
-classpath with `netty-all` 4.1.x and `guava`.
+classpath with `netty-all` 4.2.x or 4.1.x and `guava`.
 
 ### Maven Central releases
 

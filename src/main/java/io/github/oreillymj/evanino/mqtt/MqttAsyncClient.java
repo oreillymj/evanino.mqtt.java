@@ -29,7 +29,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.HttpClientCodec;
@@ -1569,7 +1568,7 @@ public final class MqttAsyncClient implements IMqttAsyncClient {
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * By default every client uses one shared {@link NioEventLoopGroup}, so many clients share
+	 * By default every client uses one shared NIO event loop group, so many clients share
 	 * a few I/O threads. A group given here is used instead and stays the caller's: shutting
 	 * the client down does not shut it down. With {@code null}, the next connect goes back to
 	 * the shared group.

@@ -15,7 +15,6 @@
 package io.github.oreillymj.evanino.mqtt;
 
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.util.NettyRuntime;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import io.netty.util.internal.SystemPropertyUtil;
@@ -54,9 +53,13 @@ final class SharedEventLoop {
 	 *
 	 * @return the shared group
 	 */
+	// Netty 4.2 deprecates NioEventLoopGroup in favour of MultiThreadIoEventLoopGroup with an
+	// NioIoHandler, but in 4.2 it is a subclass that creates exactly that, and Netty 4.1 has no
+	// MultiThreadIoEventLoopGroup. Using it keeps the client running on both.
+	@SuppressWarnings("deprecation")
 	static synchronized EventLoopGroup acquire() {
 		if (group == null || group.isShuttingDown()) {
-			group = new NioEventLoopGroup(sizedToProcessors ? processorThreads() : 0,
+			group = new io.netty.channel.nio.NioEventLoopGroup(sizedToProcessors ? processorThreads() : 0,
 					new DefaultThreadFactory(THREAD_PREFIX, true));
 			references = 0;
 		}

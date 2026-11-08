@@ -4,6 +4,8 @@
 #   benchmark/run.sh                 # every scenario, both clients
 #   benchmark/run.sh latency soak    # only these scenarios
 #   QUICK=1 benchmark/run.sh         # small counts, to check the harness works
+#   NETTY_VERSION=4.1.137.Final benchmark/run.sh
+#                                    # against another Netty version (default 4.2.20.Final)
 #   JAVA_OPTS="-Dbench.flushConsolidation=true -Dbench.sharedGroupSizing=true" benchmark/run.sh
 #                                    # extra JVM options, here turning on this client's optional tuning
 #
@@ -14,11 +16,17 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(dirname "$here")"
 repo="${M2_REPO:-$HOME/.m2/repository}"
-netty_version=4.1.140.Final
+netty_version="${NETTY_VERSION:-4.2.20.Final}"
 paho_version=1.2.5
 
+netty_modules=(buffer codec codec-http codec-mqtt codec-socks common handler handler-proxy resolver transport transport-native-unix-common)
+# Netty 4.2 split codec-base and codec-compression out of codec
+case "$netty_version" in
+  4.1.*) ;;
+  *) netty_modules+=(codec-base codec-compression) ;;
+esac
 jars=()
-for a in buffer codec codec-http codec-mqtt codec-socks common handler handler-proxy resolver transport transport-native-unix-common; do
+for a in "${netty_modules[@]}"; do
   jars+=("$repo/io/netty/netty-$a/$netty_version/netty-$a-$netty_version.jar")
 done
 jars+=("$repo/com/google/guava/guava/21.0/guava-21.0.jar")

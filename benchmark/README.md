@@ -17,8 +17,9 @@ turn on this client's `MqttConnectOptions.enableFlushConsolidation` and `MqttAsy
 which are off by default; Paho ignores them.
 
 Requirements: a JDK 8 or later, mosquitto (found at `-Dmosquitto.path`, the usual install locations or the
-`PATH`), and these jars in `~/.m2/repository`: Netty 4.1.140, Guava 21, the Android stub jar (all fetched by a
-Maven build of the project) and Paho 1.2.5:
+`PATH`), and these jars in `~/.m2/repository`: Netty 4.2.20, Guava 21, the Android stub jar (all fetched by a
+Maven build of the project) and Paho 1.2.5. `NETTY_VERSION=4.1.137.Final benchmark/run.sh` runs against another Netty
+version instead, whose jars a build with `-Dnetty.version=4.1.137.Final` fetches:
 
 ```sh
 mvn dependency:get -Dartifact=org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5
@@ -227,6 +228,91 @@ Every throughput and latency run delivered every message.
   this small, the tail depends mostly on what else is scheduled.
 - Soak: as on Windows, Paho refused publishes while disconnected and 23 in-flight publishes failed; this client
   delivered all 120,000. Neither lost an acknowledged message.
+
+### Netty 4.2: `NioEventLoopGroup` and `MultiThreadIoEventLoopGroup`
+
+These results are for a move from Netty 4.1.137 to **Netty 4.2.20** (the `netty-4.2` branch), not for the Netty
+4.1 build the rest of this page measures. Netty 4.2 deprecates `NioEventLoopGroup` in favour of
+`MultiThreadIoEventLoopGroup` with an `NioIoHandler`, but in 4.2 `NioEventLoopGroup` is a subclass that creates
+exactly that, and Netty 4.1 has no `MultiThreadIoEventLoopGroup`. So the shared event loop stays an
+`NioEventLoopGroup`, which keeps the client running on both Netty versions; the runs below show the choice makes no
+difference to performance. The Linux run further down was made with `MultiThreadIoEventLoopGroup`. Two full
+`run.sh` runs, back to back, with the defaults (as in the Linux run above), on the same Windows machine as the first
+sections, 5 November 2026: first with Netty 4.2 and the shared group still an `NioEventLoopGroup`, then with it a
+`MultiThreadIoEventLoopGroup`. Paho does not use Netty, so its two columns show how much the same run varies.
+
+| Scenario | Paho (1st run) | This client, `NioEventLoopGroup` | Paho (2nd run) | This client, `MultiThreadIoEventLoopGroup` |
+|---|---|---|---|---|
+| 1000 connections: ramp time / threads / idle CPU | 6.7 s / 4,049 / 92 ms/s | 0.39 s / 1,065 / 10 ms/s | 6.8 s / 4,048 / 93 ms/s | 0.37 s / 1,067 / 6 ms/s |
+| First connection | 335 ms | 3.1 ms | 336 ms | 3.2 ms |
+| QoS 0 throughput, window 65535 (CPU per message) | 31,900 msg/s (77.5 µs) | 52,600 msg/s (29.2 µs) | 33,100 msg/s (74.7 µs) | 48,500 msg/s (29.8 µs) |
+| QoS 1 throughput, default windows (CPU per message) | 21,000 msg/s (143 µs) | 29,200 msg/s (83 µs) | 21,600 msg/s (146 µs) | 30,300 msg/s (79 µs) |
+| QoS 1 throughput, both windows 1000 (CPU per message) | 21,500 msg/s (143 µs) | 29,900 msg/s (81 µs) | 23,300 msg/s (146 µs) | 29,800 msg/s (83 µs) |
+| QoS 2 throughput, default windows (CPU per message) | 11,300 msg/s (215 µs) | 13,200 msg/s (144 µs) | 11,400 msg/s (247 µs) | 13,900 msg/s (146 µs) |
+| QoS 0 latency at 2000 msg/s: p50 / p99 / p99.9 | 121 / 345 / 510 µs | 148 / 4,389 / 12,478 µs | 123 / 366 / 722 µs | 136 / 1,081 / 12,491 µs |
+| QoS 1 latency at 2000 msg/s: p50 / p99 / p99.9 | 111 / 2,533 / 5,605 µs | 138 / 532 / 10,497 µs | 111 / 2,520 / 3,835 µs | 137 / 3,514 / 11,513 µs |
+| Soak: refused / failed / lost | 7,555 / 4 / 0 | 0 / 0 / 0 | 7,533 / 22 / 0 | 0 / 0 / 0 |
+
+Every throughput and latency run delivered every message.
+
+- `NioEventLoopGroup` and `MultiThreadIoEventLoopGroup`: no difference beyond run-to-run variation. Throughput moved
+  by -8% at QoS 0, +4% at QoS 1 with the default windows, 0% with both windows at 1000 and +5% at QoS 2, with CPU per
+  message within 4% in every row; Paho, which did not change, moved by up to 9% between the same two runs. Connections
+  and the soak were the same.
+- Netty 4.2 and Netty 4.1: the throughput, connection and soak figures are in the same range as the Netty 4.1 runs in
+  the first table (for example QoS 1 at 28,800–30,900 msg/s and 78–90 µs a message, QoS 2 at 13,800–14,400 msg/s).
+- Latency: this client's p99.9 was 10–12 ms in all four runs, which looks like the Windows timer tail described in
+  the next section, although the harness held the timer at 1 ms. To see whether Netty 4.2 caused it, `run.sh latency`
+  was run four more times, alternating a Netty 4.1.137 build (the `claude_review` branch) and the Netty 4.2 build with
+  `MultiThreadIoEventLoopGroup`:
+
+  | Run | Paho, QoS 0 | This client, QoS 0 | Paho, QoS 1 | This client, QoS 1 |
+  |---|---|---|---|---|
+  | Netty 4.1, 1 | 119 / 345 / 469 µs | 128 / 489 / 10,876 µs | 106 / 326 / 504 µs | 119 / 439 / 10,287 µs |
+  | Netty 4.2, 1 | 122 / 358 / 717 µs | 141 / 698 / 11,260 µs | 102 / 320 / 424 µs | 135 / 1,526 / 11,295 µs |
+  | Netty 4.1, 2 | 112 / 344 / 484 µs | 131 / 2,599 / 12,229 µs | 104 / 324 / 612 µs | 132 / 666 / 10,973 µs |
+  | Netty 4.2, 2 | 118 / 349 / 762 µs | 142 / 3,281 / 12,259 µs | 106 / 313 / 390 µs | 141 / 630 / 11,595 µs |
+
+  (p50 / p99 / p99.9.) Netty 4.1 showed the same 10–12 ms tail on the day, so the tail is not from Netty 4.2; it is
+  longer than in the 3 November runs below, for a reason not yet found. This client's median was 9–16 µs higher with
+  Netty 4.2 in all four pairs, which is small, but consistent.
+
+#### Netty 4.2 on Linux
+
+A full `run.sh` run of the Netty 4.2 build with `MultiThreadIoEventLoopGroup`, with the defaults, on the same Linux
+machine as the Linux section above (Intel Core i5-7300U, 2 cores, 4 threads, Ubuntu 24.04.5, OpenJDK 21.0.12,
+Mosquitto 2.0.18), 6 November 2026, next to that section's Netty 4.1 run from 4 November:
+
+| Scenario | Paho, 4 Nov | This client, Netty 4.1 | Paho, 6 Nov | This client, Netty 4.2 |
+|---|---|---|---|---|
+| 1000 connections: ramp time / threads / idle CPU | 6.6 s / 4,044 / 132 ms/s | 0.85 s / 1,015 / 9 ms/s | 6.7 s / 4,015 / 122 ms/s | 0.98 s / 1,062 / 5 ms/s |
+| First connection | 309 ms | 1.9 ms | 311 ms | 2.4 ms |
+| QoS 0 throughput, window 65535 (CPU per message) | 41,500 msg/s (58.7 µs) | 39,400 msg/s (44.8 µs) | 40,400 msg/s (56.3 µs) | 37,600 msg/s (41.7 µs) |
+| QoS 1 throughput, default windows (CPU per message) | 17,600 msg/s (115 µs) | 19,200 msg/s (114 µs) | 16,300 msg/s (118 µs) | 18,400 msg/s (98 µs) |
+| QoS 1 throughput, both windows 1000 (CPU per message) | 18,800 msg/s (92 µs) | 18,900 msg/s (115 µs) | 17,900 msg/s (92 µs) | 17,900 msg/s (107 µs) |
+| QoS 2 throughput, default windows (CPU per message) | 9,350 msg/s (172 µs) | 9,160 msg/s (167 µs) | 7,030 msg/s (179 µs) | 7,390 msg/s (176 µs) |
+| QoS 0 latency at 2000 msg/s: p50 / p99 / p99.9 | 159 / 263 / 1,164 µs | 147 / 1,736 / 4,828 µs | 170 / 1,701 / 3,438 µs | 141 / 610 / 3,312 µs |
+| QoS 1 latency at 2000 msg/s: p50 / p99 / p99.9 | 160 / 1,025 / 2,921 µs | 147 / 331 / 2,041 µs | 163 / 811 / 2,565 µs | 154 / 653 / 2,837 µs |
+| Soak: refused / failed / lost | 7,468 / 23 / 0 | 0 / 0 / 0 | 7,446 / 34 / 0 | 0 / 0 / 0 |
+
+Every throughput and latency run delivered every message.
+
+- Throughput: both clients were 3–7% slower than on 4 November at QoS 0 and 1, and Paho, which did not change, slowed
+  by as much as this client did, so the drop comes from the machine on the day, not Netty 4.2. Against Paho in the same
+  run, this client is where it was: 7% behind at QoS 0 (5% before), 13% ahead at QoS 1 with the default windows (9%),
+  level with both windows at 1000, and 5% ahead at QoS 2 (2% behind). At QoS 2 both clients were about 20–25% slower
+  than on 4 November.
+- CPU per message: this client used 7% less at QoS 0, 14% less at QoS 1 with the default windows and 7% less with both
+  windows at 1000, while Paho's moved by 4% or less. That may be a real, small gain from Netty 4.2 on Linux, but
+  one run is not enough to be sure; on Windows, CPU per message with Netty 4.2 was in the range of the Netty 4.1 runs.
+  At QoS 2 both clients' figures were 4–5% higher.
+- QoS 0 `window_full_retries` fell from 3,080 to 950.
+- Connections: ramp time, first-connection time and threads were slightly higher (0.98 s against 0.85 s, 1,062
+  threads against 1,015), and idle CPU lower (5 against 9 ms/s): all close to Netty 4.1.
+- Latency: this client's medians were 6 µs lower at QoS 0 and 7 µs higher at QoS 1, so Linux does not show the
+  consistent 9–16 µs rise seen on Windows. The tails varied for both clients, as before, and stayed in the 2–3.5 ms
+  range, with no sign of the 10–12 ms tail seen on Windows.
+- Soak: unchanged. This client delivered all 120,000; Paho refused 7,446 publishes while disconnected and 34 failed.
 
 ### Latency and the Windows timer
 

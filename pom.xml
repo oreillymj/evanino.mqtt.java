@@ -26,6 +26,9 @@
 
         <!-- Whether the debug log calls are compiled in (BuildConfig.LOGGING); -Pno-logging sets false -->
         <mqtt.logging>true</mqtt.logging>
+
+        <!-- The client also runs on Netty 4.1; -Dnetty.version=4.1.137.Final builds and tests against it -->
+        <netty.version>4.2.20.Final</netty.version>
     </properties>
 
     <licenses>
@@ -243,6 +246,11 @@
                     <source>${project.build.jdk}</source>
                     <target>${project.build.jdk}</target>
                     <encoding>${project.build.sourceEncoding}</encoding>
+                    <!-- List each use of a deprecated API rather than a one-line summary. -->
+                    <showDeprecation>true</showDeprecation>
+                    <compilerArgs>
+                        <arg>-Xlint:deprecation</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
 
@@ -284,7 +292,7 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-all</artifactId>
-            <version>4.1.140.Final</version>
+            <version>${netty.version}</version>
         </dependency>
 
         <dependency>
