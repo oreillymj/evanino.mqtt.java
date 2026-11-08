@@ -14,7 +14,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(dirname "$here")"
 repo="${M2_REPO:-$HOME/.m2/repository}"
-netty_version=4.1.137.Final
+netty_version=4.1.140.Final
 paho_version=1.2.5
 
 jars=()

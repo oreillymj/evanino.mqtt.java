@@ -41,8 +41,6 @@ import io.netty.handler.codec.http.websocketx.extensions.compression.WebSocketCl
 import io.netty.handler.codec.mqtt.*;
 import io.netty.handler.flush.FlushConsolidationHandler;
 import io.netty.handler.proxy.ProxyHandler;
-import io.netty.handler.ssl.ClientAuth;
-import io.netty.handler.ssl.JdkSslContext;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -82,7 +80,7 @@ public final class MqttAsyncClient implements IMqttAsyncClient {
 
 	private static final String MAJOR_VERSION = "1";
 	private static final String MINOR_VERSION = "001";
-	private static final String BUILD_NUMBER = "98";
+	private static final String BUILD_NUMBER = "0";
 
 	private static final char MIN_HIGH_SURROGATE = '\uD800';
 	private static final char MAX_HIGH_SURROGATE = '\uDBFF';
@@ -4425,7 +4423,7 @@ public final class MqttAsyncClient implements IMqttAsyncClient {
 				// A TLS scheme with no context set: use the JVM's default, as Paho does, so the
 				// javax.net.ssl.* system properties apply rather than connecting without TLS.
 				try {
-					context = new JdkSslContext(SSLContext.getDefault(), true, ClientAuth.NONE);
+					context = MqttConnectOptions.wrapSslContext(SSLContext.getDefault());
 				} catch (NoSuchAlgorithmException e) {
 					connectFuture.tryFailure(new ChannelClosedException("Default TLS context unavailable", e, true));
 					throw e;
@@ -4492,7 +4490,7 @@ public final class MqttAsyncClient implements IMqttAsyncClient {
 				if (BuildConfig.LOGGING && enableLogging) log(TAG + "MqttChannelInitializer()->URI=" + this.uri.toString());
 				ch.pipeline().addLast(new HttpClientCodec(512, 512, 512));
 				ch.pipeline().addLast(new HttpObjectAggregator(8192));
-				ch.pipeline().addLast(WebSocketClientCompressionHandler.INSTANCE);
+				ch.pipeline().addLast(new WebSocketClientCompressionHandler(0));
 				DefaultHttpHeaders upgradeHeaders = new DefaultHttpHeaders();
 				for (Map.Entry<String, String> header : client.clientConfig.getCustomWebSocketHeaders().entrySet()) {
 					upgradeHeaders.set(header.getKey(), header.getValue());

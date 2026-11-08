@@ -41,6 +41,10 @@ import java.util.concurrent.TimeUnit;
  * class. The mosquitto executable is taken from the {@code mosquitto.path} system
  * property, or looked up in the usual install locations and on the {@code PATH}. When no broker
  * is available the tests are skipped rather than failed.
+ * <p>
+ * A shutdown hook also stops the private instance when the JVM exits before the rule does, for
+ * example on Ctrl+C. A forced kill of the JVM, such as IntelliJ's Stop button, runs no hooks and
+ * can still leave mosquitto running.
  */
 public final class MosquittoBroker extends ExternalResource {
 
@@ -56,6 +60,7 @@ public final class MosquittoBroker extends ExternalResource {
 	private URI sslServerURI;
 	private URI secureWebSocketServerURI;
 	private Process process;
+	private Thread shutdownHook;
 	private File configFile;
 	private int port;
 	private int webSocketPort;
@@ -185,6 +190,12 @@ public final class MosquittoBroker extends ExternalResource {
 	 */
 	public void stop() {
 		if (process != null) {
+			try {
+				Runtime.getRuntime().removeShutdownHook(shutdownHook);
+			} catch (IllegalStateException shuttingDown) {
+				// the JVM is already exiting, and the hook stops the process
+			}
+			shutdownHook = null;
 			process.destroy();
 			try {
 				if (!process.waitFor(5, TimeUnit.SECONDS)) {
@@ -219,6 +230,9 @@ public final class MosquittoBroker extends ExternalResource {
 		File log = new File(configFile.getAbsolutePath() + ".log");
 		pb.redirectOutput(ProcessBuilder.Redirect.appendTo(log));
 		process = pb.start();
+		// mosquitto is a separate process, so it outlives a JVM that exits without calling after()
+		shutdownHook = new Thread(process::destroyForcibly, "mosquitto-test-shutdown");
+		Runtime.getRuntime().addShutdownHook(shutdownHook);
 
 		long deadline = System.currentTimeMillis() + 10_000;
 		while (System.currentTimeMillis() < deadline) {

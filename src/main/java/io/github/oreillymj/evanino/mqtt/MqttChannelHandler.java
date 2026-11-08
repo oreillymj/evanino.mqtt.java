@@ -597,7 +597,7 @@ Client QOS2 PUB : Send PUBREC : Broker PUBREL : Send PUBCOMP
 						info.isDuplicate(message.fixedHeader().isDup());
 						info.isRetained(message.fixedHeader().isRetain());
 						info.setURI(client.getServerURI());
-						info.setId(message.variableHeader().messageId());
+						info.setId(message.variableHeader().packetId());
 						//handler.onMessage(message.variableHeader().topicName(), message.payload());//Trigger onMessage event listener
 						if (BuildConfig.LOGGING && enableLogging) log(TAG, "invokeHandlersForIncomingPublish()->handler.onMessage()");
 						String topic = message.variableHeader().topicName();
@@ -638,7 +638,7 @@ Client QOS2 PUB : Send PUBREC : Broker PUBREL : Send PUBCOMP
 			info.setURI(client.getServerURI());
 			// Needed to acknowledge the message with messageArrivedComplete under manual acks,
 			// e.g. for a message redelivered from a resumed session with no local subscription.
-			info.setId(message.variableHeader().messageId());
+			info.setId(message.variableHeader().packetId());
 			MqttCallback handler = client.getDefaultCallbackHandler();
 			String topic = message.variableHeader().topicName();
 			this.client.runMessageCallback(() -> {

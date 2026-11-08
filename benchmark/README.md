@@ -17,7 +17,7 @@ turn on this client's `MqttConnectOptions.enableFlushConsolidation` and `MqttAsy
 which are off by default; Paho ignores them.
 
 Requirements: a JDK 8 or later, mosquitto (found at `-Dmosquitto.path`, the usual install locations or the
-`PATH`), and these jars in `~/.m2/repository`: Netty 4.1.137, Guava 21, the Android stub jar (all fetched by a
+`PATH`), and these jars in `~/.m2/repository`: Netty 4.1.140, Guava 21, the Android stub jar (all fetched by a
 Maven build of the project) and Paho 1.2.5:
 
 ```sh

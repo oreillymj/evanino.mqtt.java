@@ -26,6 +26,7 @@ import io.netty.handler.codec.mqtt.MqttQoS;
 import io.netty.handler.codec.mqtt.MqttVersion;
 import io.netty.handler.proxy.ProxyHandler;
 import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.IdentityCipherSuiteFilter;
 import io.netty.handler.ssl.JdkSslContext;
 import io.netty.handler.ssl.SslContext;
 
@@ -530,7 +531,7 @@ public class MqttConnectOptions {
 	 */
 	public MqttConnectOptions(SSLContext sslContext) {
 		if (sslContext != null) {
-			this.sslContext = new JdkSslContext(sslContext, true, ClientAuth.NONE);
+			this.sslContext = wrapSslContext(sslContext);
 			secure = true;
 		}
 		generateRandomClientID();
@@ -1520,10 +1521,23 @@ public class MqttConnectOptions {
 	 */
 	public void setSslContext(SSLContext sslContext) {
 		if (sslContext != null) {
-			this.sslContext = new JdkSslContext(sslContext, true, ClientAuth.NONE);
+			this.sslContext = wrapSslContext(sslContext);
 			secure = true;
 		}
 		settingsParsed = false;
+	}
+
+	/**
+	 * Wraps a JDK TLS context in a Netty client context that keeps the JDK context's own cipher
+	 * suites and protocols. This is what Netty's deprecated
+	 * {@code JdkSslContext(SSLContext, boolean, ClientAuth)} constructor does.
+	 *
+	 * @param sslContext the JDK TLS context
+	 * @return the Netty context
+	 */
+	static SslContext wrapSslContext(SSLContext sslContext) {
+		return new JdkSslContext(sslContext, true, null, IdentityCipherSuiteFilter.INSTANCE, null,
+				ClientAuth.NONE, null, false);
 	}
 
 
